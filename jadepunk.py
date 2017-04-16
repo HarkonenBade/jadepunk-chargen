@@ -449,6 +449,9 @@ class Asset(object):
         def render(self, engine):
             return "{} ({})".format(engine.italics("Troubling"), engine.boldit(self.aspect))
 
+        def validate(self, master):
+            return self._type_restrict(master, [Asset.Types.ALLY, Asset.Types.DEVICE])
+
     def __init__(self,
                  a_type,
                  features,
