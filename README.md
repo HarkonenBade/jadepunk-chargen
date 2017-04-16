@@ -1,2 +1,9 @@
-# jadepunk-chargen
+# Jadepunk Chargen
 A simple char specification system for Jadepunk
+
+Jadepunk: http://ryanmdanks.com/jadepunk-tales-from-kausao-city
+
+## Supported Renderers
+* moinmoin
+
+All rights and trademarks associated with Jadepunk remain with Ryan M. Danks
