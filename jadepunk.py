@@ -477,6 +477,12 @@ class Asset(object):
         self.raw_name = name
         self.silence_gm = gm_approved
 
+        if self.type == Asset.Types.ALLY:
+            if not any([isinstance(f, Asset.Sturdy) for f in self.features]):
+                self.features.append(Asset.Sturdy(1))
+            if not any([isinstance(f, Asset.Resilient) for f in self.features]):
+                self.features.append(Asset.Resilient(1))
+
     def name(self):
         if self.raw_name is not None:
             return self.raw_name
@@ -500,6 +506,9 @@ class Asset(object):
             return max((features - (flaws - 1)) // 2, 1)
 
     def validate(self, new_char):
+        if  self.type == Asset.Types.ALLY and not any([isinstance(f, Asset.Professional) for f in self.features]):
+            print("Error: Asset {}: Allies gain one rank of Professional for free.".format(self.name()))
+            return False
         return all([f.validate(self) for f in self.features + self.flaws])
 
     def render(self, engine):
