@@ -1,4 +1,6 @@
 # Kaneko Mitsune
+## Background
+Daughter of a councillor, kept like a bird in a cage until one day she decided she had had enough.
 ## Aspects
 **Portrayal:** ***I am but a "simple musician"***  
 **Background:** ***Jewel in their father's crown***  

@@ -3,23 +3,44 @@
 import enum
 
 
+class AssetTypes(enum.Enum):
+    DEVICE = "Device"
+    TECH = "Technique"
+    ALLY = "Ally"
+
+
+class AttrTypes(enum.Enum):
+    ARISTOCRAT = "Aristocrat"
+    ENGINEER = "Engineer"
+    EXPLORER = "Explorer"
+    FIGHTER = "Fighter"
+    SCHOLAR = "Scholar"
+    SCOUNDREL = "Scoundrel"
+
+
+class AspectTypes(enum.Enum):
+    PORTRAYAL = "Portrayal"
+    BACKGROUND = "Background"
+    INCITING_INCIDENT = "Inciting Incident"
+    BELIEF = "Belief"
+    TROUBLE = "Trouble"
+
+
 class Character(object):
     def __init__(self,
                  name,
                  aspects,
                  attrs,
                  assets,
+                 background=None,
                  max_refresh=7,
                  new_gen=True):
-        """
-
-        :rtype: Character
-        """
         self.name = name
         self.aspects = aspects
         self.attrs = attrs
         self.assets = assets
         self.max_ref = max_refresh
+        self.background = background
         if not self.validate(new_gen):
             print("\n\n==============INVALID CHAR==============\n")
 
@@ -45,18 +66,22 @@ class Character(object):
             valid = False
         return valid
 
+    def render_background(self, engine):
+        if self.background is not None:
+            engine.heading("Background")
+            engine.text(self.background)
+
     def render_stats(self, engine):
-        with engine.section():
-            engine.heading("Stats")
-            engine.kv("Refresh", self.refresh())
-            engine.kv("Stress", "")
-            engine.kv("Mild Consequence", "")
-            engine.kv("Major Consequence", "")
-            engine.kv("Severe Consequence", "")
+        engine.heading("Stats")
+        engine.kv("Refresh", self.refresh())
+        engine.kv("Stress", "")
+        engine.kv("Mild Consequence", "")
+        engine.kv("Major Consequence", "")
+        engine.kv("Severe Consequence", "")
 
     def render(self, engine):
-        with engine.section():
-            engine.title(self.name)
+        engine.title(self.name)
+        self.render_background(engine)
         self.aspects.render(engine)
         self.attrs.render(engine)
         self.render_stats(engine)
@@ -66,49 +91,25 @@ class Character(object):
 
 
 class Aspects(object):
-    class Types(enum.Enum):
-        PORTRAYAL = "Portrayal"
-        BACKGROUND = "Background"
-        INCITING_INCIDENT = "Inciting Incident"
-        BELIEF = "Belief"
-        TROUBLE = "Trouble"
-
     def __init__(self, **kwargs):
-        """
-
-        :rtype: Aspects
-        """
-        self.aspects = {self.Types[asp.upper()]: val for asp, val in kwargs.items()}
+        self.aspects = {AspectTypes[asp.upper()]: val for asp, val in kwargs.items()}
 
     def validate(self, _):
-        for asp in self.Types:
+        for asp in AspectTypes:
             if asp not in self.aspects:
                 print("Error: Missing a {} aspect".format(asp.value))
                 return False
         return True
 
     def render(self, engine):
-        with engine.section():
-            engine.heading("Aspects")
-            for asp in self.Types:
-                engine.aspect(asp.value, self.aspects[asp])
+        engine.heading("Aspects")
+        for asp in AspectTypes:
+            engine.aspect(asp.value, self.aspects[asp])
 
 
 class Attrs(object):
-    class Types(enum.Enum):
-        ARISTOCRAT = "Aristocrat"
-        ENGINEER = "Engineer"
-        EXPLORER = "Explorer"
-        FIGHTER = "Fighter"
-        SCHOLAR = "Scholar"
-        SCOUNDREL = "Scoundrel"
-
     def __init__(self, **kwargs):
-        """
-
-        :rtype: Attrs
-        """
-        self.attrs = {self.Types[attr.upper()]: val for attr, val in kwargs.items()}
+        self.attrs = {AttrTypes[attr.upper()]: val for attr, val in kwargs.items()}
 
     def validate(self, new_char):
         if len(self.attrs) != 6:
@@ -140,7 +141,7 @@ class Attrs(object):
                 return False
         else:
             valid = True
-            for attr in self.Types:
+            for attr in AttrTypes:
                 val = self.attrs[attr]
                 if val < 0 or val > 5:
                     print("Error: {} attribute has value {}, it should be withing 0-5".format(attr.value,
@@ -149,50 +150,54 @@ class Attrs(object):
             return valid
 
     def render(self, engine):
-        with engine.section():
-            engine.heading("Attributes")
-            for attr in self.Types:
-                engine.kv(attr.value, "+{}".format(self.attrs[attr]))
+        engine.heading("Attributes")
+        for attr in AttrTypes:
+            engine.kv(attr.value, "+{}".format(self.attrs[attr]))
 
 
 class Asset(object):
-    class Types(enum.Enum):
-        DEVICE = "Device"
-        TECH = "Technique"
-        ALLY = "Ally"
+    @staticmethod
+    def _err(master, txt, *args):
+        print("Error: Asset {}: {}".format(master.name(), txt.format(*args)))
 
     class Prop(object):
+        allowed_types = []
+
         def name(self):
             return type(self).__name__
 
-        @staticmethod
-        def _err(master, txt, *args):
-            print("Error: Asset {}: {}".format(master.name(), txt.format(*args)))
-
-        def _type_restrict(self, master, types):
-            if master.type not in types:
-                self._err(master,
-                          "Can only apply {} feature to {}",
-                          self.name(),
-                          " and ".join([t.value for t in types]))
+        def _type_restrict(self, master):
+            if len(self.allowed_types) > 0 and master.type not in self.allowed_types:
+                Asset._err(master,
+                           "Can only apply {} feature to {}",
+                           self.name(),
+                           " and ".join([t.value for t in self.allowed_types]))
                 return False
             return True
 
         def _req_situational(self, master):
-            if not any([isinstance(f, Asset.Situational) for f in master.flaws]):
-                self._err(master, "{} requires Situational", self.name())
+            if not master.has_prop(Asset.Situational):
+                Asset._err(master, "{} requires Situational", self.name())
                 return False
             return True
 
-        def validate(self, _):
-            return True
+        def validate(self, master):
+            return self._type_restrict(master)
 
         def cost(self, _):
             if hasattr(self, "ranks"):
                 return self.ranks, False
             return 1, False
 
-    class Aspect(Prop):
+    class Feature(Prop):
+        pass
+
+    class Flaw(Prop):
+        pass
+
+    class Aspect(Feature):
+        allowed_types = [AssetTypes.ALLY, AssetTypes.DEVICE]
+
         def __init__(self, aspect):
             self.aspect = aspect
 
@@ -201,24 +206,23 @@ class Asset(object):
 
         def validate(self, master):
             if self.aspect == "":
-                self._err(master, "Missing details for Aspect.")
+                Asset._err(master, "Missing details for Aspect.")
                 return False
-            return self._type_restrict(master, [Asset.Types.ALLY, Asset.Types.DEVICE])
+            return super().validate(master)
 
-    class Exceptional(Prop):
+    class Exceptional(Feature):
         def __init__(self, txt):
             self.txt = txt
 
         def render(self, engine):
             return "{} ({})".format(engine.italics("Exceptional"), self.txt)
 
-        def validate(self, master):
-            return self._type_restrict(master, [Asset.Types.DEVICE, Asset.Types.TECH])
-
         def cost(self, _):
             return 2, True
 
-    class Flexible(Prop):
+    class Flexible(Feature):
+        allowed_types = [AssetTypes.DEVICE, AssetTypes.TECH]
+
         def __init__(self, replacing, replaced):
             self.replacing = replacing
             self.replaced = replaced
@@ -230,14 +234,16 @@ class Asset(object):
 
         def validate(self, master):
             if self.replacing == self.replaced:
-                self._err(master, "Replacing and Replaced must be different")
+                Asset._err(master, "Replacing and Replaced must be different")
                 return False
-            return self._req_situational(master) and self._type_restrict(master, [Asset.Types.DEVICE, Asset.Types.TECH])
+            return self._req_situational(master) and super().validate(master)
 
         def cost(self, _):
             return 2, False
 
-    class Focus(Prop):
+    class Focus(Feature):
+        allowed_types = [AssetTypes.DEVICE, AssetTypes.TECH]
+
         def __init__(self, attr, ranks=1):
             self.attr = attr
             self.ranks = ranks
@@ -246,39 +252,38 @@ class Asset(object):
             return "{t} {r} ({a} +{r})".format(t=engine.italics("Focus"), r=self.ranks, a=self.attr.value)
 
         def validate(self, master):
-            return self._req_situational(master) and self._type_restrict(master, [Asset.Types.DEVICE, Asset.Types.TECH])
+            return self._req_situational(master) and super().validate(master)
 
-    class Harmful(Prop):
+    class Harmful(Feature):
+        allowed_types = [AssetTypes.DEVICE, AssetTypes.TECH]
+
         def __init__(self, ranks):
             self.ranks = ranks
 
         def render(self, engine):
             return "{} {}".format(engine.italics("Harmful"), self.ranks)
 
-        def validate(self, master):
-            return self._type_restrict(master, [Asset.Types.DEVICE, Asset.Types.TECH])
+    class Independent(Feature):
+        allowed_types = [AssetTypes.ALLY]
 
-    class Independent(Prop):
         def __init__(self):
             pass
 
         def render(self, engine):
             return engine.italics("Independent")
 
-        def validate(self, master):
-            return self._type_restrict(master, [Asset.Types.ALLY])
+    class Numerous(Feature):
+        allowed_types = [AssetTypes.ALLY, AssetTypes.DEVICE]
 
-    class Numerous(Prop):
         def __init__(self, ranks):
             self.ranks = ranks
 
         def render(self, engine):
             return "{} {} ({} copies)".format(engine.italics("Numerous"), self.ranks, 2**self.ranks)
 
-        def validate(self, master):
-            return self._type_restrict(master, [Asset.Types.ALLY, Asset.Types.DEVICE])
+    class Professional(Feature):
+        allowed_types = [AssetTypes.ALLY]
 
-    class Professional(Prop):
         def __init__(self, ranks, avg=None, fair=None):
             self.ranks = ranks
             self.avg = avg
@@ -288,29 +293,36 @@ class Asset(object):
             if self.ranks == 1:
                 txt = "{} +1".format(self.avg.value)
             else:
-                txt = "{} +2, {} +1".format(self.fair.value, "+1, ".join([a.value for a in self.avg]))
+                if self.ranks == 2:
+                    avg = self.avg.value
+                else:
+                    avg = "+1, ".join([a.value for a in self.avg])
+                txt = "{} +2, {} +1".format(self.fair.value, avg)
             return "{} {} ({})".format(engine.italics("Professional"), self.ranks, txt)
 
         def validate(self, master):
             if self.ranks > 3:
-                self._err(master, "No Ally may have more than 3 ranks of Professional")
+                Asset._err(master, "No Ally may have more than 3 ranks of Professional")
                 return False
             if self.ranks == 1 and (self.fair is not None or self.avg is None or not isinstance(self.avg, Attrs.Types)):
-                self._err(master, "Professional 1 must have a single profession at average (+1)")
+                Asset._err(master, "Professional 1 must have a single profession at average (+1)")
                 return False
-            if self.ranks == 2 and (self.fair is None or self.avg is None or len(self.avg) != 1):
-                self._err(master, "Professional 2 must have a single profession at fair (+2)"
-                                  "and a single at average (+1)")
+            if self.ranks == 2 and (self.fair is None or self.avg is None):
+                Asset._err(master, "Professional 2 must have a single profession at fair (+2) "
+                                   "and a single at average (+1)")
                 return False
             if self.ranks == 3 and (self.fair is None or self.avg is None or len(self.avg) != 3):
-                self._err(master, "Professional 3 must have a single profession at fair (+2) and three at average (+1)")
+                Asset._err(master, "Professional 3 must have a single profession at fair (+2) "
+                                   "and three at average (+1)")
                 return False
-            return self._type_restrict(master, [Asset.Types.ALLY])
+            return super().validate(master)
 
         def cost(self, _):
             return self.ranks-1, False
 
-    class Protective(Prop):
+    class Protective(Feature):
+        allowed_types = [AssetTypes.DEVICE, AssetTypes.TECH]
+
         def __init__(self, ranks):
             self.ranks = ranks
 
@@ -318,15 +330,17 @@ class Asset(object):
             return "{} {}".format(engine.italics("Protective"), self.ranks)
 
         def validate(self, master):
-            if self.ranks > 2 and master.type == Asset.Types.DEVICE:
-                self._err(master, "Protective may not be applied to a device more than twice")
+            if self.ranks > 2 and master.type == AssetTypes.DEVICE:
+                Asset._err(master, "Protective may not be applied to a device more than twice")
                 return False
-            return self._type_restrict(master, [Asset.Types.DEVICE, Asset.Types.TECH])
+            return super().validate(master)
 
         def cost(self, master):
-            return self.ranks*2, master.type == Asset.Types.TECH
+            return self.ranks*2, master.type == AssetTypes.TECH
 
-    class Resilient(Prop):
+    class Resilient(Feature):
+        allowed_types = [AssetTypes.ALLY]
+
         def __init__(self, ranks):
             self.ranks = ranks
 
@@ -335,14 +349,16 @@ class Asset(object):
 
         def validate(self, master):
             if self.ranks > 2:
-                self._err(master, "Resilient may not be applied to an Ally more than twice")
+                Asset._err(master, "Resilient may not be applied to an Ally more than twice")
                 return False
-            return self._type_restrict(master, [Asset.Types.ALLY])
+            return super().validate(master)
 
         def cost(self, _):
             return self.ranks-1, False
 
-    class Sturdy(Prop):
+    class Sturdy(Feature):
+        allowed_types = [AssetTypes.ALLY, AssetTypes.DEVICE]
+
         def __init__(self, ranks):
             self.ranks = ranks
 
@@ -350,18 +366,20 @@ class Asset(object):
             return "{} {}".format(engine.italics("Sturdy"), self.ranks)
 
         def validate(self, master):
-            if self.ranks > 3 and master.type == Asset.Types.ALLY:
-                self._err(master, "Sturdy may not be applied to an Ally more than three times")
+            if self.ranks > 3 and master.type == AssetTypes.ALLY:
+                Asset._err(master, "Sturdy may not be applied to an Ally more than three times")
                 return False
-            if self.ranks > 2 and master.type == Asset.Types.DEVICE:
-                self._err(master, "Sturdy may not be applied to a Device more than twice")
+            if self.ranks > 2 and master.type == AssetTypes.DEVICE:
+                Asset._err(master, "Sturdy may not be applied to a Device more than twice")
                 return False
-            return self._type_restrict(master, [Asset.Types.ALLY, Asset.Types.DEVICE])
+            return super().validate(master)
 
         def cost(self, master):
-            return self.ranks-1 if master.type == Asset.Types.ALLY else self.ranks, False
+            return self.ranks-1 if master.type == AssetTypes.ALLY else self.ranks, False
 
-    class Talented(Prop):
+    class Talented(Feature):
+        allowed_types = [AssetTypes.ALLY]
+
         def __init__(self, a_type, prop):
             self.fake_type = a_type
             self.prop = prop
@@ -378,20 +396,20 @@ class Asset(object):
                              flaws=[])
             else:
                 return Asset(self.fake_type,
-                             features=master.features,
-                             flaws=master.flaws,
+                             features=master.properties,
+                             flaws=[],
                              functional=master.functional,
                              name=master.name())
 
         def validate(self, master):
             fake_master = self._fake_master(master)
-            return self._type_restrict(master, [Asset.Types.ALLY]) and self.prop.validate(fake_master)
+            return super().validate(master) and self.prop.validate(fake_master)
 
         def cost(self, master):
             fake_master = self._fake_master(master)
             return self.prop.cost(fake_master)
 
-    class Consuming(Prop):
+    class Consuming(Flaw):
         def __init__(self):
             pass
 
@@ -401,7 +419,7 @@ class Asset(object):
         def cost(self, _):
             return 2, False
 
-    class Demanding(Prop):
+    class Demanding(Flaw):
         def __init__(self, ranks, attr):
             self.ranks = ranks
             self.attr = attr
@@ -416,11 +434,11 @@ class Asset(object):
 
         def validate(self, master):
             if self.ranks > 2:
-                self._err(master, "Cannot apply Demanding more than twice to a given Asset")
+                Asset._err(master, "Cannot apply Demanding more than twice to a given Asset")
                 return False
             return True
 
-    class Limited(Prop):
+    class Limited(Flaw):
         def __init__(self, ranks):
             self.ranks = ranks
 
@@ -431,26 +449,25 @@ class Asset(object):
 
         def validate(self, master):
             if self.ranks > 2:
-                self._err(master, "Cannot apply Limited more than twice to a given Asset")
+                Asset._err(master, "Cannot apply Limited more than twice to a given Asset")
                 return False
             return True
 
-    class Situational(Prop):
+    class Situational(Flaw):
         def __init__(self, aspect):
             self.aspect = aspect
 
         def render(self, engine):
             return "{} ({})".format(engine.italics("Situational"), engine.boldit(self.aspect))
 
-    class Troubling(Prop):
+    class Troubling(Flaw):
+        allowed_types = [AssetTypes.ALLY, AssetTypes.DEVICE]
+
         def __init__(self, aspect):
             self.aspect = aspect
 
         def render(self, engine):
             return "{} ({})".format(engine.italics("Troubling"), engine.boldit(self.aspect))
-
-        def validate(self, master):
-            return self._type_restrict(master, [Asset.Types.ALLY, Asset.Types.DEVICE])
 
     def __init__(self,
                  a_type,
@@ -470,18 +487,17 @@ class Asset(object):
         :rtype: Asset
         """
         self.type = a_type
-        self.features = features
-        self.flaws = flaws
+        self.properties = features + flaws
         self.functional = functional
         self.guiding = guiding
         self.raw_name = name
         self.silence_gm = gm_approved
 
-        if self.type == Asset.Types.ALLY:
-            if not any([isinstance(f, Asset.Sturdy) for f in self.features]):
-                self.features.append(Asset.Sturdy(1))
-            if not any([isinstance(f, Asset.Resilient) for f in self.features]):
-                self.features.append(Asset.Resilient(1))
+        if self.type == AssetTypes.ALLY:
+            if not self.has_prop(Asset.Sturdy):
+                self.properties.append(Asset.Sturdy(1))
+            if not self.has_prop(Asset.Resilient):
+                self.properties.append(Asset.Resilient(1))
 
     def name(self):
         if self.raw_name is not None:
@@ -489,27 +505,31 @@ class Asset(object):
         else:
             return self.functional
 
+    def has_prop(self, a_type):
+        return any([isinstance(f, a_type) for f in self.properties])
+
     def refresh(self):
         features = 0
         flaws = 0
         more_starting_flaws = False
-        for f in self.features:
-            dfet, mflaws = f.cost(self)
-            features += dfet
-            more_starting_flaws = more_starting_flaws or mflaws
-        for f in self.flaws:
-            dflaw, _ = f.cost(self)
-            flaws += dflaw
+        for f in self.properties:
+            if isinstance(f, Asset.Feature):
+                dfet, mflaws = f.cost(self)
+                features += dfet
+                more_starting_flaws = more_starting_flaws or mflaws
+            elif isinstance(f, Asset.Flaw):
+                dflaw, _ = f.cost(self)
+                flaws += dflaw
         if more_starting_flaws:
             return max((features - (flaws - 2)) // 2, 1)
         else:
             return max((features - (flaws - 1)) // 2, 1)
 
     def validate(self, new_char):
-        if  self.type == Asset.Types.ALLY and not any([isinstance(f, Asset.Professional) for f in self.features]):
+        if self.type == AssetTypes.ALLY and not self.has_prop(Asset.Professional):
             print("Error: Asset {}: Allies gain one rank of Professional for free.".format(self.name()))
             return False
-        return all([f.validate(self) for f in self.features + self.flaws])
+        return all([f.validate(self) for f in self.properties])
 
     def render(self, engine):
         engine.subheading(self.name())
@@ -519,6 +539,6 @@ class Asset(object):
                 engine.aspect("Functional Aspect", self.functional)
         if self.guiding is not None:
             engine.aspect("Guiding Aspect", self.guiding)
-        engine.kv("Features", ", ".join([f.render(engine) for f in self.features]))
-        engine.kv("Flaws", ", ".join([f.render(engine) for f in self.flaws]))
+        engine.kv("Features", ", ".join([f.render(engine) for f in self.properties if isinstance(f, Asset.Feature)]))
+        engine.kv("Flaws", ", ".join([f.render(engine) for f in self.properties if isinstance(f, Asset.Flaw)]))
         engine.kv("Cost", self.refresh())

@@ -1,9 +1,12 @@
 # -*- coding: UTF-8 -*-
 
-from jadepunk import Character, Aspects, Attrs, Asset
-import moinmoin
+from jadepunk import Character, Aspects, Attrs, Asset, AssetTypes, AttrTypes
+import engine
 
 mitsune = Character("Kaneko Mitsune",
+                    background="""
+Daughter of a councillor, kept like a bird in a cage until one day she decided she had had enough.
+""".strip(),
                     aspects=Aspects(portrayal='I am but a "simple musician"',
                                     background="Jewel in their father's crown",
                                     inciting_incident="Trying to leave it all behind",
@@ -15,17 +18,17 @@ mitsune = Character("Kaneko Mitsune",
                                 fighter=2,
                                 scholar=2,
                                 scoundrel=1),
-                    assets=[Asset(Asset.Types.DEVICE,
+                    assets=[Asset(AssetTypes.DEVICE,
                                   functional="White-Jade Shamisen",
-                                  features=[Asset.Focus(Attrs.Types.ARISTOCRAT),
+                                  features=[Asset.Focus(AttrTypes.ARISTOCRAT),
                                             Asset.Harmful(1)],
                                   flaws=[Asset.Situational("While being played"),
                                          Asset.Troubling("The prize of a treasury")]),
-                            Asset(Asset.Types.TECH,
+                            Asset(AssetTypes.TECH,
                                   functional="Student of the Desert Sirocco",
                                   guiding="Jewel in their father's crown",
-                                  features=[Asset.Flexible(Attrs.Types.FIGHTER,
-                                                           Attrs.Types.EXPLORER)],
+                                  features=[Asset.Flexible(AttrTypes.FIGHTER,
+                                                           AttrTypes.EXPLORER)],
                                   flaws=[Asset.Situational("I need space to perform")])])
 
-mitsune.render(moinmoin)
+mitsune.render(engine.Markdown)
