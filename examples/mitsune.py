@@ -19,16 +19,19 @@ Daughter of a councillor, kept like a bird in a cage until one day she decided s
                                 scholar=2,
                                 scoundrel=1),
                     assets=[Asset(AssetTypes.DEVICE,
+                                  name="Kashi-dori",
                                   functional="White-Jade Shamisen",
                                   features=[Asset.Focus(AttrTypes.ARISTOCRAT),
                                             Asset.Harmful(1)],
                                   flaws=[Asset.Situational("While being played"),
                                          Asset.Troubling("The prize of a treasury")]),
                             Asset(AssetTypes.TECH,
+                                  name="School of the Desert Sirocco",
                                   functional="Student of the Desert Sirocco",
                                   guiding="Jewel in their father's crown",
                                   features=[Asset.Flexible(AttrTypes.FIGHTER,
                                                            AttrTypes.EXPLORER)],
-                                  flaws=[Asset.Situational("I need space to perform")])])
+                                  flaws=[Asset.Situational("I need space to perform")],
+                                  gm_approved=True)])
 
 mitsune.render(engine.Markdown)

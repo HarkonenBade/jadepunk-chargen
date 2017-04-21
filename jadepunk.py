@@ -165,22 +165,18 @@ class Asset(object):
         def name(self):
             return type(self).__name__
 
-        def _err(self, txt, *args):
-            print("Error: Asset ({}): Property ({}): {}".format(self.master.name(),
-                                                            self.name(),
-                                                            txt.format(*args)))
+        def err(self, txt, *args):
+            return self.master.err(" Property ({}): {}", self.name(), txt.format(*args))
 
         def _type_restrict(self):
             if len(self.allowed_types) > 0 and self.master.type not in self.allowed_types:
-                self._err("Can only be applied to {}",
-                          " and ".join([t.value for t in self.allowed_types]))
-                return False
+                return self.err("Can only be applied to {}",
+                                " and ".join([t.value for t in self.allowed_types]))
             return True
 
         def _req_situational(self):
             if not self.master.has_prop(Asset.Situational):
-                self._err("Requires Situational")
-                return False
+                return self.err("Requires Situational")
             return True
 
         def render(self, engine):
@@ -225,8 +221,7 @@ class Asset(object):
 
         def validate(self):
             if self.aspect == "":
-                self._err("Missing details for Aspect.")
-                return False
+                return self.err("Missing details for Aspect.")
             return super().validate()
 
     class Exceptional(Feature):
@@ -253,9 +248,8 @@ class Asset(object):
 
         def validate(self):
             if self.replacing == self.replaced:
-                self._err("Replacing and Replaced must be different")
-                return False
-            return self._req_situational() and super().validate()
+                return self.err("Replacing and Replaced must be different")
+            return all([self._req_situational(), super().validate()])
 
         def cost(self):
             return 2, False
@@ -272,7 +266,7 @@ class Asset(object):
             return "{} +{}".format(self.attr.value, self.ranks)
 
         def validate(self):
-            return self._req_situational() and super().validate()
+            return all([self._req_situational(), super().validate()])
 
     class Harmful(Feature):
         allowed_types = [AssetTypes.DEVICE, AssetTypes.TECH]
@@ -315,28 +309,24 @@ class Asset(object):
 
         def validate(self):
             if self.ranks > 3:
-                self._err("No Ally may have more than 3 ranks of Professional")
-                return False
+                return self.err("No Ally may have more than 3 ranks of Professional")
             if self.ranks == 1 and (self.fair is not None or
                                     self.avg is None or
                                     not isinstance(self.avg, AttrTypes)):
-                self._err("Professional 1 must have a single profession at average (+1)")
-                return False
+                return self.err("Professional 1 must have a single profession at average (+1)")
             if self.ranks == 2 and (self.fair is None or
                                     self.avg is None or
                                     not isinstance(self.avg, AttrTypes) or
                                     not isinstance(self.fair, AttrTypes)):
-                self._err("Professional 2 must have a single profession at fair (+2) "
-                          "and a single at average (+1)")
-                return False
+                return self.err("Professional 2 must have a single profession at fair (+2) "
+                                "and a single at average (+1)")
             if self.ranks == 3 and (self.fair is None or
                                     self.avg is None or
                                     not isinstance(self.avg, list) or
                                     not isinstance(self.fair, AttrTypes) or
                                     len(self.avg) != 3):
-                self._err("Professional 3 must have a single profession at fair (+2) "
-                          "and three at average (+1)")
-                return False
+                return self.err("Professional 3 must have a single profession at fair (+2) "
+                                "and three at average (+1)")
             return super().validate()
 
         def cost(self):
@@ -351,8 +341,7 @@ class Asset(object):
 
         def validate(self):
             if self.ranks > 2 and self.master.type == AssetTypes.DEVICE:
-                self._err("May not be applied to a device more than twice")
-                return False
+                return self.err("May not be applied to a device more than twice")
             return super().validate()
 
         def cost(self):
@@ -367,8 +356,7 @@ class Asset(object):
 
         def validate(self):
             if self.ranks > 2:
-                self._err("May not be applied to an Ally more than twice")
-                return False
+                return self.err("May not be applied to an Ally more than twice")
             return super().validate()
 
         def cost(self):
@@ -383,11 +371,9 @@ class Asset(object):
 
         def validate(self):
             if self.ranks > 3 and self.master.type == AssetTypes.ALLY:
-                self._err("May not be applied to an Ally more than three times")
-                return False
+                return self.err("May not be applied to an Ally more than three times")
             if self.ranks > 2 and self.master.type == AssetTypes.DEVICE:
-                self._err("May not be applied to a Device more than twice")
-                return False
+                return self.err("May not be applied to a Device more than twice")
             return super().validate()
 
         def cost(self):
@@ -405,20 +391,25 @@ class Asset(object):
         def set_master(self, master):
             super().set_master(master)
             self.prop.set_master(self._fake_master())
-            self.ranks = self.prop.cost()
+            self.ranks, _ = self.prop.cost()
 
         def desc(self, engine):
             return self.prop.render(engine)
 
         def _fake_master(self):
-            return Asset(self.fake_type,
-                         features=self.master.properties,
+            fake = Asset(self.fake_type,
+                         features=[],
                          flaws=[],
                          functional=self.master.functional,
                          name=self.master.name())
+            fake.properties = self.master.properties
+            return fake
 
         def validate(self):
             return super().validate() and self.prop.validate()
+
+        def cost(self):
+            return self.prop.cost()
 
     class Consuming(Flaw):
         @staticmethod
@@ -443,8 +434,7 @@ class Asset(object):
 
         def validate(self):
             if self.ranks > 2:
-                self._err("Cannot apply Demanding more than twice to a given Asset")
-                return False
+                return self.err("Cannot apply Demanding more than twice to a given Asset")
             return True
 
     class Limited(Flaw):
@@ -457,8 +447,7 @@ class Asset(object):
 
         def validate(self):
             if self.ranks > 2:
-                self._err("Cannot apply Limited more than twice to a given Asset")
-                return False
+                return self.err("Cannot apply Limited more than twice to a given Asset")
             return True
 
     class Situational(Flaw):
@@ -512,11 +501,15 @@ class Asset(object):
         for p in self.properties:
             p.set_master(self)
 
+    def err(self, txt, *args):
+        print("Error: Asset ({}): {}".format(self.name(), txt.format(*args)))
+        return False
+
     def name(self):
         if self.raw_name is not None:
             return self.raw_name
         else:
-            return self.functional
+            return "Unnamed {}".format(self.type.value)
 
     def has_prop(self, a_type):
         return any([isinstance(f, a_type) for f in self.properties])
@@ -525,33 +518,49 @@ class Asset(object):
         features = 0
         flaws = 0
         more_starting_flaws = False
-        for f in self.properties:
-            if isinstance(f, Asset.Feature):
-                dfet, mflaws = f.cost()
-                features += dfet
-                more_starting_flaws = more_starting_flaws or mflaws
-            elif isinstance(f, Asset.Flaw):
-                dflaw, _ = f.cost()
-                flaws += dflaw
+        for f in self.features():
+            dfet, mflaws = f.cost()
+            features += dfet
+            more_starting_flaws = more_starting_flaws or mflaws
+
+        for f in self.flaws():
+            dflaw, _ = f.cost()
+            flaws += dflaw
         if more_starting_flaws:
-            return max((features - (flaws - 2)) // 2, 1)
-        else:
-            return max((features - (flaws - 1)) // 2, 1)
+            flaws -= 1
+        return max((features - (flaws - 1)) // 2, 1)
+
+    def features(self):
+        return (f for f in self.properties if isinstance(f, Asset.Feature))
+
+    def flaws(self):
+        return (f for f in self.properties if isinstance(f, Asset.Flaw))
 
     def validate(self, new_char):
+        if self.type in [AssetTypes.ALLY, AssetTypes.DEVICE]:
+            if self.functional is None:
+                return self.err("Allies and Devices must have functional aspects.")
+            if self.guiding is not None:
+                return self.err("Allies and Devices should not have a guiding aspect.")
+
+        if self.type == AssetTypes.TECH:
+            if self.guiding is None:
+                return self.err("Techniques must have a guiding aspect.")
+            if self.functional is not None and not self.silence_gm:
+                return self.err("Techniques should only have functional aspects with gm approval. "
+                                "(set gm_approved to silence this warning.)")
+
         if self.type == AssetTypes.ALLY and not self.has_prop(Asset.Professional):
-            print("Error: Asset {}: Allies gain one rank of Professional for free.".format(self.name()))
-            return False
+            return self.err("Allies gain one rank of Professional for free.")
         return all([f.validate() for f in self.properties])
 
     def render(self, engine):
         engine.subheading(self.name())
         engine.kv("Type", self.type.value)
         if self.functional is not None:
-            if self.raw_name is not None:
-                engine.aspect("Functional Aspect", self.functional)
+            engine.aspect("Functional Aspect", self.functional)
         if self.guiding is not None:
             engine.aspect("Guiding Aspect", self.guiding)
-        engine.kv("Features", ", ".join([f.render(engine) for f in self.properties if isinstance(f, Asset.Feature)]))
-        engine.kv("Flaws", ", ".join([f.render(engine) for f in self.properties if isinstance(f, Asset.Flaw)]))
-        engine.kv("Cost", self.refresh())
+        engine.kv("Features", ", ".join([f.render(engine) for f in self.features()]))
+        engine.kv("Flaws", ", ".join([f.render(engine) for f in self.flaws()]))
+        engine.kv("Cost", "{} refresh".format(self.refresh()))
