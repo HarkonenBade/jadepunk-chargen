@@ -21,7 +21,7 @@ Daughter of a councillor, kept like a bird in a cage until one day she decided s
                     assets=[Asset(AssetTypes.DEVICE,
                                   name="Kashi-dori",
                                   functional="White-Jade Shamisen",
-                                  features=[Asset.Focus(AttrTypes.ARISTOCRAT),
+                                  features=[Asset.Focus(AttrTypes.ARISTOCRAT, 2),
                                             Asset.Harmful(1)],
                                   flaws=[Asset.Situational("While being played"),
                                          Asset.Troubling("The prize of a treasury")]),

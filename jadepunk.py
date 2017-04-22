@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 import enum
+import math
 
 
 class AssetTypes(enum.Enum):
@@ -158,6 +159,7 @@ class Asset(object):
 
         def __init__(self):
             self.master = None
+            self.extra_flaw = False
 
         def set_master(self, master):
             self.master = master
@@ -198,10 +200,13 @@ class Asset(object):
         def validate(self):
             return self._type_restrict()
 
+        def additional_flaw(self):
+            return self.extra_flaw
+
         def cost(self):
             if hasattr(self, "ranks"):
-                return self.ranks, False
-            return 1, False
+                return self.ranks
+            return 1
 
     class Feature(Prop):
         pass
@@ -228,12 +233,13 @@ class Asset(object):
         def __init__(self, txt):
             super().__init__()
             self.txt = txt
+            self.extra_flaw = True
 
         def desc(self, _):
             return self.txt
 
         def cost(self):
-            return 2, True
+            return 2
 
     class Flexible(Feature):
         allowed_types = [AssetTypes.DEVICE, AssetTypes.TECH]
@@ -252,7 +258,7 @@ class Asset(object):
             return all([self._req_situational(), super().validate()])
 
         def cost(self):
-            return 2, False
+            return 2
 
     class Focus(Feature):
         allowed_types = [AssetTypes.DEVICE, AssetTypes.TECH]
@@ -330,7 +336,7 @@ class Asset(object):
             return super().validate()
 
         def cost(self):
-            return self.ranks-1, False
+            return self.ranks-1
 
     class Protective(Feature):
         allowed_types = [AssetTypes.DEVICE, AssetTypes.TECH]
@@ -338,6 +344,7 @@ class Asset(object):
         def __init__(self, ranks):
             super().__init__()
             self.ranks = ranks
+            self.extra_flaw = self.master.type == AssetTypes.TECH
 
         def validate(self):
             if self.ranks > 2 and self.master.type == AssetTypes.DEVICE:
@@ -345,7 +352,7 @@ class Asset(object):
             return super().validate()
 
         def cost(self):
-            return self.ranks*2, self.master.type == AssetTypes.TECH
+            return self.ranks*2
 
     class Resilient(Feature):
         allowed_types = [AssetTypes.ALLY]
@@ -360,7 +367,7 @@ class Asset(object):
             return super().validate()
 
         def cost(self):
-            return self.ranks-1, False
+            return self.ranks-1
 
     class Sturdy(Feature):
         allowed_types = [AssetTypes.ALLY, AssetTypes.DEVICE]
@@ -377,7 +384,7 @@ class Asset(object):
             return super().validate()
 
         def cost(self):
-            return self.ranks-1 if self.master.type == AssetTypes.ALLY else self.ranks, False
+            return self.ranks-1 if self.master.type == AssetTypes.ALLY else self.ranks
 
     class Talented(Feature):
         allowed_types = [AssetTypes.ALLY]
@@ -391,7 +398,7 @@ class Asset(object):
         def set_master(self, master):
             super().set_master(master)
             self.prop.set_master(self._fake_master())
-            self.ranks, _ = self.prop.cost()
+            self.ranks = self.prop.cost()
 
         def desc(self, engine):
             return self.prop.render(engine)
@@ -408,16 +415,19 @@ class Asset(object):
         def validate(self):
             return super().validate() and self.prop.validate()
 
-        def cost(self):
-            return self.prop.cost()
+        def additional_flaw(self):
+            return self.prop.additional_flaw()
 
     class Consuming(Flaw):
+        def __init__(self):
+            super().__init__()
+
         @staticmethod
         def desc(_):
             return "Costs a fate point to activate"
 
         def cost(self):
-            return 2, False
+            return 2
 
     class Demanding(Flaw):
         def __init__(self, ranks, attr):
@@ -475,6 +485,7 @@ class Asset(object):
                  functional=None,
                  guiding=None,
                  name=None,
+                 mastercrafted=False,
                  gm_approved=False):
         """
         :type a_type: Asset.Types
@@ -491,6 +502,7 @@ class Asset(object):
         self.guiding = guiding
         self.raw_name = name
         self.silence_gm = gm_approved
+        self.mastercrafted = mastercrafted
 
         if self.type == AssetTypes.ALLY:
             if not self.has_prop(Asset.Sturdy):
@@ -501,9 +513,15 @@ class Asset(object):
         for p in self.properties:
             p.set_master(self)
 
+    def _msg(self, grade, txt, *args):
+        print("{}: Asset ({}): {}".format(grade, self.name(), txt.format(*args)))
+
     def err(self, txt, *args):
-        print("Error: Asset ({}): {}".format(self.name(), txt.format(*args)))
+        self._msg("Error", txt, *args)
         return False
+
+    def warn(self, txt, *args):
+        self._msg("Warning", txt, *args)
 
     def name(self):
         if self.raw_name is not None:
@@ -514,29 +532,54 @@ class Asset(object):
     def has_prop(self, a_type):
         return any([isinstance(f, a_type) for f in self.properties])
 
-    def refresh(self):
-        features = 0
-        flaws = 0
-        more_starting_flaws = False
-        for f in self.features():
-            dfet, mflaws = f.cost()
-            features += dfet
-            more_starting_flaws = more_starting_flaws or mflaws
+    def refresh(self, check=False):
+        features = sum([f.cost() for f in self.features()])
+        flaws = sum([f.cost() for f in self.flaws()])
+        starting_flaws = 2 if any([f.additional_flaw() for f in self.properties]) else 1
+        starting_features = 2
 
-        for f in self.flaws():
-            dflaw, _ = f.cost()
-            flaws += dflaw
-        if more_starting_flaws:
-            flaws -= 1
-        return max((features - (flaws - 1)) // 2, 1)
+        if check and flaws < starting_flaws:
+            return self.err("Must have at least {} flaws.", starting_flaws)
+
+        fet_from_flaw = flaws - starting_flaws
+
+        if check and features < starting_features:
+            self.warn("Assets start with {} features, currently only has {}", starting_features, features)
+
+        if check and (features - starting_features) < fet_from_flaw:
+            self.warn("Can have upto {} features from flaws, currently only has {}.",
+                      fet_from_flaw,
+                      features - starting_features)
+
+        fet_from_ref = features - fet_from_flaw
+
+        if check and fet_from_ref % 2 == 1:
+            self.warn("You are gaining {} features from refresh, you could gain {} for the same cost.",
+                      fet_from_ref, fet_from_ref + 1)
+
+        ref = max(math.ceil(fet_from_ref / 2), 1)
+        if self.mastercrafted:
+            ref = max(ref - 1, 1)
+        if check:
+            return True
+        return ref
 
     def features(self):
-        return (f for f in self.properties if isinstance(f, Asset.Feature))
+        return [f for f in self.properties if isinstance(f, Asset.Feature)]
 
     def flaws(self):
-        return (f for f in self.properties if isinstance(f, Asset.Flaw))
+        return [f for f in self.properties if isinstance(f, Asset.Flaw)]
 
     def validate(self, new_char):
+        if new_char:
+            if sum([f.cost() for f in self.features()]) < 2:
+                return self.err("Assets created at chargen should have at least two features.")
+            if len(self.flaws()) < 1:
+                return self.err("Assets created at chargen should have at least one flaw.")
+        else:
+            if len(self.features()) < 1:
+                return self.err("Assets should have a feature.")
+
         if self.type in [AssetTypes.ALLY, AssetTypes.DEVICE]:
             if self.functional is None:
                 return self.err("Allies and Devices must have functional aspects.")
@@ -549,6 +592,9 @@ class Asset(object):
             if self.functional is not None and not self.silence_gm:
                 return self.err("Techniques should only have functional aspects with gm approval. "
                                 "(set gm_approved to silence this warning.)")
+
+        if not self.refresh(check=True):
+            return False
 
         if self.type == AssetTypes.ALLY and not self.has_prop(Asset.Professional):
             return self.err("Allies gain one rank of Professional for free.")

@@ -21,14 +21,16 @@ Daughter of a councillor, kept like a bird in a cage until one day she decided s
 **Major Consequence:**   
 **Severe Consequence:**   
 ## Assets
-### White-Jade Shamisen
+### Kashi-dori
 **Type:** Device  
-**Features:** *Focus* 1 (Aristocrat +1), *Harmful* 1  
+**Functional Aspect:** ***White-Jade Shamisen***  
+**Features:** *Focus* 2 (Aristocrat +2), *Harmful* 1  
 **Flaws:** *Situational* (***While being played***), *Troubling* (***The prize of a treasury***)  
-**Cost:** 1  
-### Student of the Desert Sirocco
+**Cost:** 1 refresh  
+### School of the Desert Sirocco
 **Type:** Technique  
+**Functional Aspect:** ***Student of the Desert Sirocco***  
 **Guiding Aspect:** ***Jewel in their father's crown***  
 **Features:** *Flexible* (Use Fighter instead of Explorer)  
 **Flaws:** *Situational* (***I need space to perform***)  
-**Cost:** 1  
+**Cost:** 1 refresh  
