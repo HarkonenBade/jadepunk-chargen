@@ -3,8 +3,7 @@ import sys
 import yaml
 
 from . import Aspects, AspectTypes, Asset, AssetTypes, Attrs, AttrTypes, Character
-
-import engine
+from .engine import EngineLoader
 
 
 def from_yaml(yml_path, engine):
@@ -49,7 +48,4 @@ def from_yaml(yml_path, engine):
 
 if __name__ == "__main__":
     if sys.argv[1] in ["yml", "yaml"]:
-        if sys.argv[3] == "moinmoin":
-            from_yaml(sys.argv[2], engine.MoinMoin)
-        elif sys.argv[3] == "markdown":
-            from_yaml(sys.argv[2], engine.Markdown)
+        from_yaml(sys.argv[2], EngineLoader(sys.argv[3]))

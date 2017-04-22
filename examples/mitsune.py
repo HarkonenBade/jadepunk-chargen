@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from jadepunk import Character, Aspects, Attrs, Asset, AssetTypes, AttrTypes
-import engine
+from jadepunk.engine import EngineLoader
 
 mitsune = Character("Kaneko Mitsune",
                     background="""
@@ -34,4 +34,4 @@ Daughter of a councillor, kept like a bird in a cage until one day she decided s
                                   flaws=[Asset.Situational("I need space to perform")],
                                   gm_approved=True)])
 
-mitsune.render(engine.Markdown)
+mitsune.render(EngineLoader("markdown"))

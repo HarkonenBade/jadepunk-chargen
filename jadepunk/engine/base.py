@@ -1,7 +1,18 @@
-# -*- coding: UTF-8 -*-
+class EngineLoader(object):
+    engine_store = {}
+
+    def __new__(cls, name):
+        return cls.engine_store[name]
+
+    @classmethod
+    def register(cls, name):
+        def wrapper(obj):
+            cls.engine_store[name] = obj
+            return obj
+        return wrapper
 
 
-class Engine(object):
+class BaseEngine(object):
     BOLD_EM = 0
     ITAL_EM = 0
     TITLE_HEADER = 1
@@ -55,33 +66,3 @@ class Engine(object):
     @classmethod
     def aspect(cls, key, txt):
         cls.kv(key, cls.boldit(txt))
-
-
-class MoinMoin(Engine):
-    BOLD_EM = 3
-    ITAL_EM = 2
-    TITLE_HEADER = 2
-    KV_END = "\n\n"
-
-    @classmethod
-    def header(cls, txt, lv):
-        cls.text("{l} {t} {l}".format(t=txt, l="="*lv))
-
-    @classmethod
-    def em(cls, txt, num):
-        return "{l}{t}{l}".format(t=txt, l="'"*num)
-
-
-class Markdown(Engine):
-    BOLD_EM = 2
-    ITAL_EM = 1
-    TITLE_HEADER = 1
-    KV_END = "  \n"
-
-    @classmethod
-    def header(cls, txt, lv):
-        print("{l} {t}".format(t=txt, l="#"*lv))
-
-    @classmethod
-    def em(cls, txt, num):
-        return "{l}{t}{l}".format(t=txt, l="*"*num)

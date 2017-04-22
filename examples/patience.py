@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from jadepunk import Character, Aspects, Attrs, Asset, AssetTypes, AttrTypes
-import engine
+from jadepunk.engine import EngineLoader
 
 patience = Character("Patience Boyd",
                      aspects=Aspects(portrayal='Gunslinger for Justice',
@@ -34,4 +34,4 @@ patience = Character("Patience Boyd",
                                    features=[Asset.Flexible(AttrTypes.SCOUNDREL, AttrTypes.ARISTOCRAT)],
                                    flaws=[Asset.Situational("Only when making people angry")])])
 
-patience.render(engine.Markdown)
+patience.render(EngineLoader("markdown"))
