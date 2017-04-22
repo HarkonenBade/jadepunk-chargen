@@ -1,0 +1,35 @@
+name: "Kaneko Mitsune"
+background: >
+  Daughter of a councillor, kept like a bird in a cage until one day she decided she had had enough.
+aspects:
+  portrayal: I am but a "simple musician"
+  background: Jewel in their father's crown
+  inciting_incident: Trying to leave it all behind
+  belief: The corrupt elite only think of themselves
+  trouble: Runaway child of a councillor"
+attrs:
+  aristocrat: 3
+  engineer: 0
+  explorer: 1
+  fighter: 2
+  scholar: 2
+  scoundrel: 1
+assets:
+  - a_type: !Asset DEVICE
+    name: Kashi-dori
+    functional: White-Jade Shamisen
+    Focus:
+      attr: !Attr ARISTOCRAT
+      ranks: 2
+    Harmful: 1
+    Situational: While being played
+    Troubling: The prize of a treasury
+  - a_type: !Asset TECH
+    name: School of the Desert Sirocco
+    functional: Student of the Desert Sirocco
+    guiding: Jewel in their father's crown
+    Flexible:
+      replacing: !Attr FIGHTER
+      replaced: !Attr EXPLORER
+    Situational: I need space to perform
+    gm_approved: true
