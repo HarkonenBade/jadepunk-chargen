@@ -1,7 +1,5 @@
 # -*- coding: UTF-8 -*-
 
-import contextlib
-
 
 class Engine(object):
     BOLD_EM = 0
