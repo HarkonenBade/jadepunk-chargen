@@ -17,6 +17,7 @@ class Asset(object):
         def __init__(self):
             self.master = None
             self.extra_flaw = False
+            self.max_ranks = math.inf
 
         def set_master(self, master):
             self.master = master
@@ -36,6 +37,12 @@ class Asset(object):
             if not self.master.has_prop(Asset.Situational):
                 val.err(self.err_txt("Requires Situational"))
 
+        def _check_max_ranks(self, val):
+            if hasattr(self, "ranks"):
+                if self.ranks > self.max_ranks:
+                    val.err(self.err_txt("Cannot have more than {} ranks.",
+                                         self.max_ranks))
+
         def render(self, engine):
             if hasattr(self, "ranks"):
                 if hasattr(self, "desc"):
@@ -54,6 +61,7 @@ class Asset(object):
 
         def validate(self, val):
             self._type_restrict(val)
+            self._check_max_ranks(val)
 
         def additional_flaw(self):
             return self.extra_flaw
@@ -159,6 +167,7 @@ class Asset(object):
             self.ranks = ranks
             self.avg = avg
             self.fair = fair
+            self.max_ranks = 3
 
         def desc(self, _):
             if self.ranks == 1:
@@ -172,8 +181,6 @@ class Asset(object):
 
         def validate(self, val):
             super().validate(val)
-            if self.ranks > 3:
-                val.err(self._txt("No Ally may have more than 3 ranks of Professional"))
             if self.ranks == 1 and (self.fair is not None or
                                     self.avg is None or
                                     not isinstance(self.avg, AttrTypes)):
@@ -203,10 +210,10 @@ class Asset(object):
             self.ranks = ranks
             self.extra_flaw = self.master.type == AssetTypes.TECH
 
-        def validate(self, val):
-            super().validate(val)
-            if self.ranks > 2 and self.master.type == AssetTypes.DEVICE:
-                val.err(self._txt("May not be applied to a device more than twice"))
+        def set_master(self, master):
+            super().set_master(master)
+            if self.master.type == AssetTypes.DEVICE:
+                self.max_ranks = 2
 
         def cost(self):
             return self.ranks*2
@@ -217,11 +224,7 @@ class Asset(object):
         def __init__(self, ranks):
             super().__init__()
             self.ranks = ranks
-
-        def validate(self, val):
-            super().validate(val)
-            if self.ranks > 2:
-                val.err(self._txt("May not be applied to an Ally more than twice"))
+            self.max_ranks = 2
 
         def cost(self):
             return self.ranks-1
@@ -233,12 +236,12 @@ class Asset(object):
             super().__init__()
             self.ranks = ranks
 
-        def validate(self, val):
-            super().validate(val)
-            if self.ranks > 3 and self.master.type == AssetTypes.ALLY:
-                val.err(self.err_txt("May not be applied to an Ally more than three times"))
-            if self.ranks > 2 and self.master.type == AssetTypes.DEVICE:
-                val.err(self.err_txt("May not be applied to a Device more than twice"))
+        def set_master(self, master):
+            super().set_master(master)
+            if self.master.type == AssetTypes.DEVICE:
+                self.max_ranks = 2
+            elif self.master.type == AssetTypes.ALLY:
+                self.max_ranks = 3
 
         def cost(self):
             return self.ranks-1 if self.master.type == AssetTypes.ALLY else self.ranks
@@ -292,6 +295,7 @@ class Asset(object):
             super().__init__()
             self.ranks = ranks
             self.attr = attr
+            self.max_ranks = 2
 
         def render(self, _):
             if self.ranks == 1:
@@ -300,23 +304,14 @@ class Asset(object):
                 return ("One Action and A Fair (2) {a} roll,"
                         "One Scene, or A Great (+4) {a} roll").format(a=self.attr.value)
 
-        def validate(self, val):
-            super().validate(val)
-            if self.ranks > 2:
-                val.err(self.err_txt("Cannot apply Demanding more than twice to a given Asset"))
-
     class Limited(Flaw):
         def __init__(self, ranks):
             super().__init__()
             self.ranks = ranks
+            self.max_ranks = 2
 
         def desc(self, _):
             return "Once per scene" if self.ranks == 1 else "Once per session"
-
-        def validate(self, val):
-            super().validate(val)
-            if self.ranks > 2:
-                val.err(self.err_txt("Cannot apply Limited more than twice to a given Asset"))
 
     class Situational(Flaw):
         def __init__(self, aspect):
