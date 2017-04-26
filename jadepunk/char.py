@@ -1,3 +1,6 @@
+from .validation import Validator
+
+
 class Character(object):
     def __init__(self,
                  name,
@@ -13,30 +16,26 @@ class Character(object):
         self.assets = assets
         self.max_ref = max_refresh
         self.background = background
-        if not self.validate(new_gen):
-            print("\n\n==============INVALID CHAR==============\n")
+        val = Validator(new_gen)
+        self.validate(val)
+        val.check()
 
     def refresh(self):
         return self.max_ref - sum([asset.refresh() for asset in self.assets])
 
-    def validate(self, new_char):
-        valid = True
+    def validate(self, val):
         if self.name == "":
-            print("Error: Character must have a name.")
-            valid = False
+            val.err("Character must have a name.")
 
-        valid = (self.aspects.validate(new_char) and
-                 self.attrs.validate(new_char) and
-                 all([asset.validate(new_char) for asset in self.assets]) and
-                 valid)
+        self.aspects.validate(val)
+        self.attrs.validate(val)
+        for asset in self.assets:
+            asset.validate(val)
 
-        if new_char and self.max_ref != 7:
-            print("Error: Starting chars have 7 refresh max")
-            valid = False
+        if val.new_char and self.max_ref != 7:
+            val.err("Starting chars have 7 refresh max")
         if self.refresh() <= 1:
-            print("Error: Char cannot have 0 or negative refresh")
-            valid = False
-        return valid
+            val.err("Char cannot have 0 or negative refresh")
 
     def render_background(self, engine):
         if self.background is not None:

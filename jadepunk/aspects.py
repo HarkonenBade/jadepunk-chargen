@@ -13,12 +13,10 @@ class Aspects(object):
     def __init__(self, **kwargs):
         self.aspects = {AspectTypes[asp.upper()]: val for asp, val in kwargs.items()}
 
-    def validate(self, _):
+    def validate(self, val):
         for asp in AspectTypes:
             if asp not in self.aspects:
-                print("Error: Missing a {} aspect".format(asp.value))
-                return False
-        return True
+                val.err("Missing a {} aspect".format(asp.value))
 
     def render(self, engine):
         engine.heading("Aspects")
