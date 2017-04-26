@@ -1,0 +1,42 @@
+name: Patience Boyd
+aspects:
+  portrayal: Gunslinger for Justice
+  background: The Enforcer's Daughter
+  inciting_incident: The Watch Crippled The Only Good Person I Know
+  belief: (Only) the virtuous deserve obedience
+  trouble: Just Couldn't Let It Lie)
+attrs:
+  aristocrat: 1
+  engineer: 1
+  explorer: 2
+  fighter: 2
+  scholar: 0
+  scoundrel: 3
+assets:
+  - a_type: !Asset DEVICE
+    name: The Compelling Arguments
+    functional: My Mother's Red Jade Revolvers
+    Harmful: 3
+    Numerous: 1
+    Demanding:
+      ranks: 1
+      attr: !Attr FIGHTER
+  - a_type: !Asset ALLY
+    name: Father Michael Boyd
+    functional: Priest to the shunned
+    Professional:
+      ranks: 2
+      avg: !Attr SCHOLAR
+      fair: !Attr ARISTOCRAT
+    Talented:
+      a_type: !Asset TECH
+      Focus: !Attr SCHOLAR
+    Limited: 1
+  - a_type: !Asset TECH
+    name: All The Best Insults
+    guiding: Just Couldn't Let It Lie
+    Flexible:
+      replacing: !Attr SCOUNDREL
+      replaced: !Attr ARISTOCRAT
+    Situational: Only when making people angry
+
