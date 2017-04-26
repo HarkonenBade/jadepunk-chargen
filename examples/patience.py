@@ -31,6 +31,7 @@ patience = Character("Patience Boyd",
                                    flaws=[Asset.Limited(1)]),
                              Asset(AssetTypes.TECH,
                                    name="All The Best Insults",
+                                   guiding="Just Couldn't Let It Lie",
                                    features=[Asset.Flexible(AttrTypes.SCOUNDREL, AttrTypes.ARISTOCRAT)],
                                    flaws=[Asset.Situational("Only when making people angry")])])
 
